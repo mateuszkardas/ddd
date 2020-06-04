@@ -1,6 +1,6 @@
 const { hostname } = require('os');
 const http = require('http');
-const message = `Hello World v6 from ${hostname()} \n`;
+const message = `Hello World v7 from ${hostname()} \n`;
 const port = 8080;
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
