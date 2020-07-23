@@ -3,31 +3,33 @@ Parameters:
   EC2InstanceType:
     Type: String
   EC2AMI:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
   CodePipelineBucket:
     Type: String
-    Description: 'The S3 bucket for CodePipeline artifacts.'
+    Description: "The S3 bucket for CodePipeline artifacts."
   GitHubOwner:
     Type: String
-    Description: 'The username of the source GitHub repo.'
+    Description: "The username of the source GitHub repo."
   GitHubRepo:
     Type: String
-    Description: 'The source GitHub repo name (without the username).'
+    Description: "The source GitHub repo name (without the username)."
   GitHubBranch:
     Type: String
     Default: master
-    Description: 'The source GitHub branch.'
+    Description: "The source GitHub branch."
   GitHubPersonalAccessToken:
     Type: String
     NoEcho: true
     Description: 'A GitHub personal access token with "repo" and"admin:repo_hook" permissions.'
+  Domain:
+    Type: String
 Resources:
   DeploymentRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           Effect: Allow
           Principal:
@@ -151,10 +153,10 @@ Resources:
         SecretToken: !Ref GitHubPersonalAccessToken
       Filters:
         - JsonPath: $.ref
-          MatchEquals: 'refs/heads/{Branch}'
+          MatchEquals: "refs/heads/{Branch}"
       TargetPipeline: !Ref Pipeline
       TargetAction: Source
-      Name: !Sub 'webhook-${AWS::StackName}'
+      Name: !Sub "webhook-${AWS::StackName}"
       TargetPipelineVersion: !GetAtt Pipeline.Version
       RegisterWithThirdParty: true
   Staging:
@@ -164,6 +166,8 @@ Resources:
       TimeoutInMinutes: 30
       Parameters:
         EC2InstanceType: !Ref EC2InstanceType
+        Domain: !Ref Domain
+        SubDomain: staging.
   Prod:
     Type: AWS::CloudFormation::Stack
     DependsOn: Staging
@@ -172,6 +176,8 @@ Resources:
       TimeoutInMinutes: 30
       Parameters:
         EC2InstanceType: !Ref EC2InstanceType
+        Domain: !Ref Domain
+        SubDomain: ""
 Outputs:
   StagingLBEndpoint:
     Value: !GetAtt Staging.Outputs.LBEndpoint

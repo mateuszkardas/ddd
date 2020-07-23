@@ -15,6 +15,8 @@ GH_OWNER=$(cat ~/.github/aws-bootstrap-owner)
 GH_REPO=$(cat ~/.github/aws-bootstrap-repo)
 GH_BRANCH=master
 
+DOMAIN=mkardas.tech
+
 # Deploys static resources
 echo -e "\n\n=========== Deploying setup.yml ==========="
 aws cloudformation deploy \
@@ -54,6 +56,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
     EC2InstanceType=$EC_INSTANCE_TYPE \
+    Domain=$DOMAIN \
     GitHubOwner=$GH_OWNER \
     GitHubRepo=$GH_REPO \
     GitHubBranch=$GH_BRANCH \

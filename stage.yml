@@ -3,8 +3,12 @@ Parameters:
   EC2InstanceType:
     Type: String
   EC2AMI:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+  Domain:
+    Type: String
+  SubDomain:
+    Type: String
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -19,26 +23,26 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [0, !GetAZs '']
+      AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: 10.0.0.0/18
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
         - Key: AZ
-          Value: !Select [0, !GetAZs '']
+          Value: !Select [0, !GetAZs ""]
   SubnetAZ2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [1, !GetAZs '']
+      AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: 10.0.64.0/18
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
         - Key: AZ
-          Value: !Select [1, !GetAZs '']
+          Value: !Select [1, !GetAZs ""]
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -112,7 +116,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref VPC
-      GroupDescription: !Sub 'Internal Security group for ${AWS::StackName}'
+      GroupDescription: !Sub "Internal Security group for ${AWS::StackName}"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 8080
@@ -130,15 +134,15 @@ Resources:
         - Key: Name
           Value: !Ref AWS::StackName
   InstanceRole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           Effect: Allow
           Principal:
             Service:
-              - 'ec2.amazonaws.com'
+              - "ec2.amazonaws.com"
           Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
@@ -149,13 +153,13 @@ Resources:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action: 'ec2:DescribeTags'
-                Resource: '*'
+                Action: "ec2:DescribeTags"
+                Resource: "*"
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
   InstanceProfile:
-    Type: 'AWS::IAM::InstanceProfile'
+    Type: "AWS::IAM::InstanceProfile"
     Properties:
       Roles:
         - Ref: InstanceRole
@@ -170,14 +174,14 @@ Resources:
               jq: []
           files:
             /home/ec2-user/install:
-              source: !Sub 'https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install'
-              mode: '000755'
+              source: !Sub "https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install"
+              mode: "000755"
           commands:
             00-install-cd-agent:
-              command: './install auto'
-              cwd: '/home/ec2-user'
+              command: "./install auto"
+              cwd: "/home/ec2-user"
     Properties:
-      LaunchTemplateName: !Sub 'LaunchTemplate_${AWS::StackName}'
+      LaunchTemplateName: !Sub "LaunchTemplate_${AWS::StackName}"
       LaunchTemplateData:
         ImageId: !Ref EC2AMI
         InstanceType: !Ref EC2InstanceType
@@ -227,10 +231,10 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     UpdatePolicy:
       AutoScalingRollingUpdate:
-        MinInstancesInService: '1'
-        MaxBatchSize: '1'
-        PauseTime: 'PT15M'
-        WaitOnResourceSignals: 'true'
+        MinInstancesInService: "1"
+        MaxBatchSize: "1"
+        PauseTime: "PT15M"
+        WaitOnResourceSignals: "true"
         SuspendProcesses:
           - HealthCheck
           - ReplaceUnhealthy
@@ -238,10 +242,10 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName: !Sub 'ASG_${AWS::StackName}'
+      AutoScalingGroupName: !Sub "ASG_${AWS::StackName}"
       AvailabilityZones:
-        - !Select [0, !GetAZs '']
-        - !Select [1, !GetAZs '']
+        - !Select [0, !GetAZs ""]
+        - !Select [1, !GetAZs ""]
       MinSize: 2
       MaxSize: 6
       HealthCheckGracePeriod: 0
@@ -252,21 +256,30 @@ Resources:
       TargetGroupARNs:
         - !Ref LoadBalancerTargetGroup
       MetricsCollection:
-        - Granularity: '1Minute'
+        - Granularity: "1Minute"
           Metrics:
-            - 'GroupMaxSize'
-            - 'GroupInServiceInstances'
+            - "GroupMaxSize"
+            - "GroupInServiceInstances"
       VPCZoneIdentifier:
         - !Ref SubnetAZ1
         - !Ref SubnetAZ2
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
-          PropagateAtLaunch: 'true'
+          PropagateAtLaunch: "true"
+  DNS:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${Domain}."
+      Name: !Sub "${SubDomain}${Domain}."
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+        DNSName: !GetAtt LoadBalancer.DNSName
 Outputs:
   LBEndpoint:
     Description: The DNS name for the LB
-    Value: !Sub 'http://${LoadBalancer.DNSName}:80'
+    Value: !Sub "http://${DNS}"
   ScalingGroup:
     Description: The ScalingGroup for this stage
     Value: !Ref ScalingGroup
